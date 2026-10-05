@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CODING RACING 3D - Computational Thinking Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700;800&family=Orbitron:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'Prompt', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow: hidden;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.9));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 8px;
+        }
+        @keyframes blockPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0px rgba(59, 130, 246, 0.5); }
+            50% { transform: scale(1.04); box-shadow: 0 0 20px rgba(59, 130, 246, 0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 0px rgba(59, 130, 246, 0.5); }
+        }
+        .block-executing {
+            animation: blockPulse 0.6s infinite ease-in-out;
+            border-color: #60a5fa !important;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen overflow-hidden text-white select-none">
+
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+    <div id="app-ui" class="relative z-10 w-full h-full flex flex-col pointer-events-none">
+
+        <!-- Header HUD Bar -->
+        <header id="hud-top" class="p-3 md:p-4 flex justify-between items-center hidden pointer-events-auto">
+            <div class="flex items-center gap-3">
+                <button id="btn-back-levels" class="glass-panel px-3.5 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-800 transition active:scale-95">
+                    <i class="fa-solid fa-arrow-left text-cyan-400"></i>
+                    <span class="text-xs font-semibold hidden md:inline">เลือกด่าน</span>
+                </button>
+                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-amber-400 text-sm"></i>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase tracking-wider">LEVEL</div>
+                        <div id="hud-level-title" class="font-bold text-xs md:text-sm text-cyan-300">ด่านที่ 1: เรียงลำดับ</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 md:gap-4">
+                <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <i class="fa-solid fa-heart text-red-500 text-sm animate-pulse"></i>
+                    <span id="hud-lives" class="font-orbitron font-extrabold text-sm text-red-400">3</span>
+                </div>
+                <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <i class="fa-solid fa-coins text-amber-400 text-sm"></i>
+                    <span id="hud-coins" class="font-orbitron font-extrabold text-sm text-amber-300">0</span>
+                </div>
+                <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400 uppercase hidden sm:inline">Score:</span>
+                    <span id="hud-score" class="font-orbitron font-extrabold text-sm text-cyan-400">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Gameplay Algorithm Workspace -->
+        <main id="gameplay-area" class="flex-1 flex flex-col md:flex-row p-3 md:p-4 gap-4 overflow-hidden hidden pointer-events-none">
+            <div class="flex-1"></div>
+
+            <div class="w-full md:w-96 glass-panel rounded-3xl p-4 flex flex-col pointer-events-auto shadow-2xl border border-slate-700/60 max-h-[55vh] md:max-h-none">
+                
+                <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-700/60">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-code text-cyan-400"></i>
+                        <h2 class="font-orbitron text-sm font-bold text-slate-100">ALGORITHM EDITOR</h2>
+                    </div>
+                    <span id="command-count" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">0 / 10 บล็อก</span>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-[11px] text-slate-400 mb-1.5 font-semibold flex justify-between">
+                        <span>บล็อกคำสั่งที่มี (คลิกเพื่อเพิ่ม):</span>
+                    </div>
+                    <div id="palette-container" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scroll pr-1">
+                        <!-- Command buttons populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col min-h-0 mb-3">
+                    <div class="flex justify-between items-center mb-1 text-[11px] text-slate-400 font-semibold">
+                        <span>ลำดับการทำงาน (Algorithm Sequence):</span>
+                        <button id="btn-clear-code" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> ล้างทั้งหมด
+                        </button>
+                    </div>
+                    <div id="algorithm-dropzone" class="flex-1 bg-slate-900/90 border-2 border-dashed border-slate-700 rounded-2xl p-2 overflow-y-auto custom-scroll flex flex-col gap-2">
+                        <div id="empty-state-msg" class="my-auto text-center text-slate-500 text-xs p-4">
+                            <i class="fa-solid fa-cubes text-2xl mb-1 block opacity-40"></i>
+                            เลือกบล็อกคำสั่งด้านบนเพื่อสร้างขั้นตอนวิธีสำหรับควบคุมรถ
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-reset-code" class="glass-card py-3 rounded-xl font-bold text-xs text-slate-300 hover:bg-slate-800 transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> รีเซ็ตตำแหน่ง
+                    </button>
+                    <button id="btn-start-race" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 py-3 rounded-xl font-orbitron font-extrabold text-xs text-slate-950 tracking-wider shadow-lg shadow-emerald-500/30 transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i> START RACE
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="screen-main" class="absolute inset-0 z-20 glass-panel flex flex-col items-center justify-center p-6 bg-slate-950/85 backdrop-blur-md">
+        <div class="max-w-xl w-full text-center relative">
+            <div class="w-24 h-24 mx-auto mb-4 bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl text-white shadow-2xl shadow-cyan-500/40 border border-cyan-300/30">
+                <i class="fa-solid fa-laptop-code"></i>
+            </div>
+            
+            <h1 class="font-orbitron text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 tracking-wider drop-shadow-lg mb-2">
+                CODING RACING 3D
+            </h1>
+            <p class="text-cyan-200/90 text-sm md:text-base font-light max-w-md mx-auto mb-6">
+                เรียนรู้วิทยาการคำนวณและแนวคิดเชิงคำนวณ (Computational Thinking) สำหรับ ม.3
+            </p>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left mb-8 max-w-lg mx-auto">
+                <div class="glass-card p-2.5 rounded-xl border border-slate-700/50 text-center">
+                    <i class="fa-solid fa-list-ol text-cyan-400 mb-1"></i>
+                    <div class="text-[11px] font-bold">Sequencing</div>
+                </div>
+                <div class="glass-card p-2.5 rounded-xl border border-slate-700/50 text-center">
+                    <i class="fa-solid fa-code-branch text-emerald-400 mb-1"></i>
+                    <div class="text-[11px] font-bold">If-Else</div>
+                </div>
+                <div class="glass-card p-2.5 rounded-xl border border-slate-700/50 text-center">
+                    <i class="fa-solid fa-rotate text-amber-400 mb-1"></i>
+                    <div class="text-[11px] font-bold">Loops</div>
+                </div>
+                <div class="glass-card p-2.5 rounded-xl border border-slate-700/50 text-center">
+                    <i class="fa-solid fa-bug text-rose-400 mb-1"></i>
+                    <div class="text-[11px] font-bold">Debugging</div>
+                </div>
+            </div>
+
+            <button id="btn-enter-levels" class="w-full sm:w-72 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 font-orbitron font-bold text-base text-white tracking-widest hover:brightness-110 active:scale-95 transition shadow-xl shadow-cyan-500/30 border border-cyan-300/40">
+                เข้าสู่ภารกิจการแข่ง
+            </button>
+        </div>
+    </div>
+
+    <!-- Level Select Screen -->
+    <div id="screen-level-select" class="absolute inset-0 z-20 glass-panel flex flex-col items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md hidden">
+        <div class="max-w-2xl w-full">
+            <div class="text-center mb-6">
+                <h2 class="font-orbitron text-2xl md:text-3xl font-extrabold text-cyan-300">SELECT LEVEL MISSION</h2>
+                <p class="text-slate-400 text-xs md:text-sm mt-1">เลือกด่านภารกิจถนนรูปแบบต่างๆ เพื่อฝึกการเขียน Algorithm</p>
+            </div>
+
+            <div id="level-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6 max-h-[60vh] overflow-y-auto pr-1"></div>
+
+            <div class="text-center">
+                <button id="btn-back-main" class="px-6 py-2.5 rounded-xl glass-card text-xs font-semibold text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-house mr-1"></i> กลับหน้าหลัก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Briefing Modal -->
+    <div id="modal-briefing" class="absolute inset-0 z-30 glass-panel flex flex-col items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden">
+        <div class="max-w-md w-full glass-card p-6 rounded-3xl border border-cyan-500/30 text-center relative shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-3 bg-cyan-500/20 text-cyan-400 rounded-2xl flex items-center justify-center text-2xl border border-cyan-400/30">
+                <i class="fa-solid fa-flag-checkered"></i>
+            </div>
+
+            <span id="brief-level-num" class="text-[10px] font-orbitron tracking-widest text-cyan-400 uppercase font-bold">LEVEL 1</span>
+            <h3 id="brief-level-name" class="font-bold text-xl text-white mt-0.5 mb-2">การเรียงลำดับคำสั่ง (Sequence)</h3>
+            <p id="brief-level-desc" class="text-xs text-slate-300 leading-relaxed mb-4 bg-slate-900/60 p-3 rounded-xl border border-slate-800"></p>
+
+            <div class="text-left mb-5 bg-slate-800/40 p-3 rounded-xl text-[11px] text-slate-300 space-y-1.5 border border-slate-700/50">
+                <div class="font-bold text-cyan-300 flex items-center gap-1">
+                    <i class="fa-solid fa-brain"></i> ทักษะการคิดที่จะได้เรียนรู้:
+                </div>
+                <div id="brief-ct-skill" class="text-slate-200 font-medium"></div>
+            </div>
+
+            <button id="btn-start-mission" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-orbitron font-bold text-sm tracking-wider hover:brightness-110 transition shadow-lg shadow-cyan-500/30">
+                เริ่มสร้าง ALGORITHM
+            </button>
+        </div>
+    </div>
+
+    <!-- Educational Summary Modal -->
+    <div id="modal-summary" class="absolute inset-0 z-30 glass-panel flex flex-col items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md hidden">
+        <div class="max-w-lg w-full glass-card p-6 rounded-3xl border border-emerald-500/40 text-center relative shadow-2xl">
+            <div class="w-20 h-20 mx-auto mb-3 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center text-3xl border border-emerald-400/40 shadow-xl shadow-emerald-500/20">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <h3 class="font-orbitron font-extrabold text-2xl text-emerald-400 mb-1">MISSION COMPLETE!</h3>
+            <p class="text-xs text-slate-300 mb-4">คุณออกแบบ Algorithm เข้าเส้นชัยได้สำเร็จ!</p>
+
+            <div class="grid grid-cols-3 gap-2 mb-4 bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+                <div>
+                    <span class="text-[10px] text-slate-400 block">คะแนนภารกิจ</span>
+                    <span id="sum-score" class="font-orbitron text-base font-bold text-amber-400">+100</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block">เหรียญที่เก็บได้</span>
+                    <span id="sum-coins" class="font-orbitron text-base font-bold text-yellow-300">+20</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block">โบนัสคำสั่งน้อย</span>
+                    <span id="sum-bonus" class="font-orbitron text-base font-bold text-emerald-400">+30</span>
+                </div>
+            </div>
+
+            <div class="text-left bg-slate-900/90 p-4 rounded-2xl mb-5 border border-cyan-500/30 space-y-2">
+                <div class="flex items-center gap-2 text-cyan-400 font-bold text-xs">
+                    <i class="fa-solid fa-graduation-cap text-base"></i>
+                    <span>อธิบายการทำงานเชิงคำนวณ (Computational Thinking):</span>
+                </div>
+                <p id="summary-ct-explain" class="text-xs text-slate-300 leading-relaxed"></p>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-retry-level" class="flex-1 py-3 rounded-xl glass-panel text-xs font-bold text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> ลองใหม่
+                </button>
+                <button id="btn-next-level" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-orbitron font-extrabold text-xs tracking-wider hover:brightness-110 transition shadow-lg shadow-emerald-500/25">
+                    ด่านถัดไป <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, clock, sunLight, hemiLight, groundPlane;
+        let carMesh, wheels = [];
+        let trackObjects = [], sceneryObjects = [], cloudObjects = [], particleSystems = [];
+        let currentLevel = 0;
+        let lives = 3;
+        let totalScore = 0;
+        let currentCoins = 0;
+        let isExecuting = false;
+
+        let targetCamPos = new THREE.Vector3();
+        let targetCamLookAt = new THREE.Vector3();
+        let currentCamLookAt = new THREE.Vector3();
+
+        const GRID_SIZE = 4;
+        let carGridPos = { x: 0, z: 0, dir: 0 }; // 0=North(+Z), 1=East(+X), 2=South(-Z), 3=West(-X)
+
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) {
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+            }
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'coin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(987.77, now);
+                osc.frequency.setValueAtTime(1318.51, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'crash') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'step') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(340, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+        }
+
+        const COMMAND_TYPES = {
+            FORWARD: { label: 'FORWARD', icon: 'fa-arrow-up', color: 'bg-blue-600 hover:bg-blue-500' },
+            ACCELERATE: { label: 'ACCELERATE (x2)', icon: 'fa-angles-up', color: 'bg-indigo-600 hover:bg-indigo-500' },
+            LEFT: { label: 'TURN LEFT', icon: 'fa-arrow-rotate-left', color: 'bg-emerald-600 hover:bg-emerald-500' },
+            RIGHT: { label: 'TURN RIGHT', icon: 'fa-arrow-rotate-right', color: 'bg-emerald-600 hover:bg-emerald-500' },
+            IF_OBSTACLE: { label: 'IF OBSTACLE ➔ LEFT', icon: 'fa-code-branch', color: 'bg-purple-600 hover:bg-purple-500' },
+            REPEAT_2: { label: 'REPEAT 2 TIMES', icon: 'fa-rotate', color: 'bg-orange-600 hover:bg-orange-500' },
+            REPEAT_3: { label: 'REPEAT 3 TIMES', icon: 'fa-repeat', color: 'bg-red-600 hover:bg-red-500' }
+        };
+
+        const LEVELS = [
+            {
+                id: 1,
+                theme: 'CITY',
+                title: "ด่านที่ 1: การเรียงลำดับคำสั่ง (Sequencing)",
+                desc: "ถนนเมืองใหญ่: วางคำสั่ง FORWARD เรียงลำดับจากบนลงล่างเพื่อให้รถเคลื่อนที่ไปตามถนนตรงและเข้าเส้นชัย",
+                ctSkill: "• Sequencing: การจัดเรียงลำดับขั้นตอนของคำสั่งอย่างเป็นระบบ",
+                ctExplain: "คุณได้เรียนรู้เรื่อง 'การเรียงลำดับ (Sequencing)' ซึ่งคอมพิวเตอร์จะอ่านและทำงานตามคำสั่งทีละบรรทัดจากบนลงล่าง หากเรียงคำสั่งผิดพลาด รถจะไม่สามารถเข้าเส้นชัยได้!",
+                allowedBlocks: ['FORWARD', 'ACCELERATE'],
+                maxBlocks: 5,
+                grid: [
+                    { x: 0, z: 0, type: 'START' },
+                    { x: 0, z: 1, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 2, type: 'ROAD' },
+                    { x: 0, z: 3, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 4, type: 'FINISH' }
+                ],
+                initialCode: []
+            },
+            {
+                id: 2,
+                theme: 'PARK',
+                title: "ด่านที่ 2: การออกแบบขั้นตอนวิธี (Algorithm)",
+                desc: "ถนนสวนสาธารณะ: ออกแบบทิศทางการเลี้ยวซ้าย-ขวา เพื่อหลบหลีกสิ่งกีดขวางและอ้อมไปเข้าเส้นชัย",
+                ctSkill: "• Algorithm Design: การวางแผนขั้นตอนแก้ปัญหาการเดินทางในฉาก 3 มิติ",
+                ctExplain: "คุณได้ฝึก 'การออกแบบขั้นตอนวิธี (Algorithm Design)' โดยวางแผนการเลี้ยวซ้ายและขวาเพื่อเปลี่ยนทิศทางในพิกัด 3 มิติอย่างแม่นยำ",
+                allowedBlocks: ['FORWARD', 'LEFT', 'RIGHT'],
+                maxBlocks: 8,
+                grid: [
+                    { x: 0, z: 0, type: 'START' },
+                    { x: 0, z: 1, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 2, type: 'ROAD', item: 'OBSTACLE' },
+                    { x: 1, z: 1, type: 'ROAD' },
+                    { x: 1, z: 2, type: 'ROAD', item: 'COIN' },
+                    { x: 1, z: 3, type: 'FINISH' }
+                ],
+                initialCode: []
+            },
+            {
+                id: 3,
+                theme: 'CYBER',
+                title: "ด่านที่ 3: เมืองไซเบอร์พังก์ (If-Else Condition)",
+                desc: "ถนนไซเบอร์นีออนเรืองแสง: ใช้เงื่อนไข IF OBSTACLE ➔ LEFT เพื่อตรวจจับสิ่งกีดขวางและเลี้ยวหลบอัตโนมัติ",
+                ctSkill: "• Conditionals: การตรวจสอบสภาวะเพื่อตัดสินใจทางเลือกในเมืองไซเบอร์",
+                ctExplain: "การใช้ 'เงื่อนไข (If-Else)' ในถนนไซเบอร์นีออน ช่วยให้รถตรวจพบสิ่งกีดขวางแล้วตัดสินใจเลี้ยวหลบเองได้ทันที!",
+                allowedBlocks: ['FORWARD', 'LEFT', 'RIGHT', 'IF_OBSTACLE'],
+                maxBlocks: 7,
+                grid: [
+                    { x: 0, z: 0, type: 'START' },
+                    { x: 0, z: 1, type: 'ROAD' },
+                    { x: 0, z: 2, type: 'ROAD', item: 'OBSTACLE' },
+                    { x: -1, z: 1, type: 'ROAD' },
+                    { x: -1, z: 2, type: 'ROAD', item: 'COIN' },
+                    { x: -1, z: 3, type: 'ROAD' },
+                    { x: -1, z: 4, type: 'FINISH' }
+                ],
+                initialCode: []
+            },
+            {
+                id: 4,
+                theme: 'DESERT',
+                title: "ด่านที่ 4: ทะเลทรายแคนยอน (Loops / Repetition)",
+                desc: "ถนนหินทรายหุบเขาแคนยอน: ถนนข้างหน้ายาวมาก! ใช้บล็อก REPEAT 3 TIMES เพื่อลดจำนวนบรรทัดของคำสั่งให้สั้นลง",
+                ctSkill: "• Abstraction & Loops: การวนซ้ำคำสั่งบนถนนหินทรายอันยาวไกล",
+                ctExplain: "คุณได้ประยุกต์ใช้ 'การทำงานแบบวนซ้ำ (Loop)' บนเส้นทางทะเลทราย ซึ่งช่วยลดจำนวนบล็อกคำสั่งที่ซ้ำซ้อนได้อย่างมีประสิทธิภาพ!",
+                allowedBlocks: ['FORWARD', 'LEFT', 'RIGHT', 'REPEAT_3'],
+                maxBlocks: 4,
+                grid: [
+                    { x: 0, z: 0, type: 'START' },
+                    { x: 0, z: 1, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 2, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 3, type: 'ROAD', item: 'COIN' },
+                    { x: 0, z: 4, type: 'FINISH' }
+                ],
+                initialCode: []
+            },
+            {
+                id: 5,
+                theme: 'VOLCANO',
+                title: "ด่านที่ 5: เทือกเขาภูเขาไฟลาวา (Debugging)",
+                desc: "ถนนแผ่นหินออปซิเดียนภูเขาไฟ: โปรแกรมมี Bug! รถเลี้ยวผิดไปทางลาวาเรืองแสง จงสืบค้นและแก้ไข Algorithm ให้ถูกต้อง",
+                ctSkill: "• Debugging: การค้นหาและแก้ไขข้อผิดพลาดบนเส้นทางอันตราย",
+                ctExplain: "ยินดีด้วย! คุณได้ฝึกทักษะ 'Debugging' สืบค้นและแก้ Bug ของรถบนถนนภูเขาไฟลาวาได้สำเร็จ!",
+                allowedBlocks: ['FORWARD', 'LEFT', 'RIGHT', 'ACCELERATE'],
+                maxBlocks: 8,
+                grid: [
+                    { x: 0, z: 0, type: 'START' },
+                    { x: 0, z: 1, type: 'ROAD' },
+                    { x: 0, z: 2, type: 'ROAD', item: 'OBSTACLE' },
+                    { x: 1, z: 1, type: 'ROAD', item: 'COIN' },
+                    { x: 1, z: 2, type: 'ROAD', item: 'COIN' },
+                    { x: 1, z: 3, type: 'ROAD' },
+                    { x: 1, z: 4, type: 'FINISH' }
+                ],
+                initialCode: ['FORWARD', 'FORWARD', 'LEFT', 'FORWARD']
+            }
+        ];
+
+        let userAlgorithm = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            clock = new THREE.Clock();
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            sunLight = new THREE.DirectionalLight(0xfffaed, 2.0);
+            sunLight.position.set(30, 50, -25);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 180;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            scene.add(sunLight);
+
+            hemiLight = new THREE.HemisphereLight(0xbae6fd, 0x15803d, 0.9);
+            scene.add(hemiLight);
+
+            groundPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(300, 300),
+                new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.9 })
+            );
+            groundPlane.rotation.x = -Math.PI / 2;
+            groundPlane.position.y = -0.05;
+            groundPlane.receiveShadow = true;
+            scene.add(groundPlane);
+
+            createSkyClouds();
+            carMesh = createDetailedCarMesh();
+            scene.add(carMesh);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createSkyClouds() {
+            const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, transparent: true, opacity: 0.85 });
+            cloudObjects = [];
+
+            for (let i = 0; i < 16; i++) {
+                const cloudGroup = new THREE.Group();
+                const count = 3 + Math.floor(Math.random() * 4);
+                for (let j = 0; j < count; j++) {
+                    const radius = 3 + Math.random() * 4;
+                    const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8), cloudMat);
+                    sphere.position.set((j - count / 2) * 3, Math.random() * 1.5, Math.random() * 2);
+                    cloudGroup.add(sphere);
+                }
+                cloudGroup.position.set(
+                    (Math.random() - 0.5) * 180,
+                    25 + Math.random() * 15,
+                    (Math.random() - 0.5) * 180
+                );
+                cloudGroup.userData = { driftSpeed: 0.02 + Math.random() * 0.03 };
+                scene.add(cloudGroup);
+                cloudObjects.push(cloudGroup);
+            }
+        }
+
+        function createDetailedCarMesh() {
+            const group = new THREE.Group();
+            wheels = [];
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 3.2), bodyMat);
+            body.position.y = 0.5;
+            body.castShadow = true;
+            group.add(body);
+
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.6), cabinMat);
+            cabin.position.set(0, 1.0, -0.2);
+            cabin.castShadow = true;
+            group.add(cabin);
+
+            const headMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            const h1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.1), headMat);
+            h1.position.set(-0.6, 0.5, 1.61);
+            const h2 = h1.clone();
+            h2.position.set(0.6, 0.5, 1.61);
+            group.add(h1); group.add(h2);
+
+            const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.1), tailMat);
+            t1.position.set(-0.6, 0.5, -1.61);
+            const t2 = t1.clone();
+            t2.position.set(0.6, 0.5, -1.61);
+            group.add(t1); group.add(t2);
+
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+
+            const wheelPositions = [
+                { x: -0.95, y: 0.3, z: 1.0 },
+                { x: 0.95, y: 0.3, z: 1.0 },
+                { x: -0.95, y: 0.3, z: -1.0 },
+                { x: 0.95, y: 0.3, z: -1.0 }
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wGroup = new THREE.Group();
+                const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.3, 16), wheelMat);
+                tire.rotation.z = Math.PI / 2;
+                tire.castShadow = true;
+                
+                const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.32, 8), rimMat);
+                rim.rotation.z = Math.PI / 2;
+
+                wGroup.add(tire);
+                wGroup.add(rim);
+                wGroup.position.set(pos.x, pos.y, pos.z);
+                
+                group.add(wGroup);
+                wheels.push(wGroup);
+            });
+
+            return group;
+        }
+
+        function buildThemeScenery(level) {
+            sceneryObjects.forEach(obj => scene.remove(obj));
+            sceneryObjects = [];
+
+            const theme = level.theme;
+
+            if (theme === 'CYBER') {
+                // Cyberpunk Neon City Lights & Towers
+                for (let x = -8; x <= 8; x += 3) {
+                    for (let z = -3; z <= 10; z += 3) {
+                        if (level.grid.some(g => Math.abs(g.x - x) <= 1 && Math.abs(g.z - z) <= 1)) continue;
+
+                        const tower = new THREE.Mesh(
+                            new THREE.BoxGeometry(2, 8 + Math.random() * 8, 2),
+                            new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.2 })
+                        );
+                        tower.position.set(x * GRID_SIZE, tower.geometry.parameters.height / 2, z * GRID_SIZE);
+
+                        const neonRing = new THREE.Mesh(
+                            new THREE.BoxGeometry(2.1, 0.3, 2.1),
+                            new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x06b6d4 : 0xd946ef })
+                        );
+                        neonRing.position.set(x * GRID_SIZE, 4 + Math.random() * 4, z * GRID_SIZE);
+
+                        scene.add(tower); scene.add(neonRing);
+                        sceneryObjects.push(tower, neonRing);
+                    }
+                }
+            } else if (theme === 'DESERT') {
+                // Desert Cacti and Sandstone Pillars
+                const cactusMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 });
+
+                for (let x = -8; x <= 8; x += 2.5) {
+                    for (let z = -3; z <= 10; z += 2.5) {
+                        if (level.grid.some(g => Math.abs(g.x - x) <= 1 && Math.abs(g.z - z) <= 1)) continue;
+
+                        const posX = x * GRID_SIZE + (Math.random() - 0.5) * 2;
+                        const posZ = z * GRID_SIZE + (Math.random() - 0.5) * 2;
+
+                        if (Math.random() > 0.4) {
+                            // Cactus
+                            const cacGroup = new THREE.Group();
+                            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 3.5, 8), cactusMat);
+                            stem.position.y = 1.75;
+                            cacGroup.add(stem);
+                            cacGroup.position.set(posX, 0, posZ);
+                            scene.add(cacGroup);
+                            sceneryObjects.push(cacGroup);
+                        } else {
+                            // Sandstone Pillar
+                            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 5, 7), rockMat);
+                            pillar.position.set(posX, 2.5, posZ);
+                            scene.add(pillar);
+                            sceneryObjects.push(pillar);
+                        }
+                    }
+                }
+            } else if (theme === 'VOLCANO') {
+                // Volcanic Lava Rocks
+                const lavaRockMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+                const emberMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+
+                for (let x = -8; x <= 8; x += 2.5) {
+                    for (let z = -3; z <= 10; z += 2.5) {
+                        if (level.grid.some(g => Math.abs(g.x - x) <= 1 && Math.abs(g.z - z) <= 1)) continue;
+
+                        const posX = x * GRID_SIZE;
+                        const posZ = z * GRID_SIZE;
+
+                        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5 + Math.random(), 1), lavaRockMat);
+                        rock.position.set(posX, 0.8, posZ);
+                        scene.add(rock);
+                        sceneryObjects.push(rock);
+
+                        if (Math.random() > 0.5) {
+                            const ember = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), emberMat);
+                            ember.position.set(posX, 0.2, posZ);
+                            scene.add(ember);
+                            sceneryObjects.push(ember);
+                        }
+                    }
+                }
+            } else {
+                // City / Park Trees
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+                const foliageMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
+
+                for (let x = -8; x <= 8; x += 2) {
+                    for (let z = -3; z <= 10; z += 2) {
+                        if (level.grid.some(g => Math.abs(g.x - x) <= 1 && Math.abs(g.z - z) <= 1)) continue;
+
+                        const posX = x * GRID_SIZE + (Math.random() - 0.5) * 2;
+                        const posZ = z * GRID_SIZE + (Math.random() - 0.5) * 2;
+
+                        const treeGroup = new THREE.Group();
+                        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 8), trunkMat);
+                        trunk.position.y = 1;
+                        treeGroup.add(trunk);
+
+                        for (let layer = 0; layer < 3; layer++) {
+                            const cone = new THREE.Mesh(new THREE.ConeGeometry(2.2 - layer * 0.5, 2.5, 8), foliageMat);
+                            cone.position.y = 2.2 + layer * 1.3;
+                            treeGroup.add(cone);
+                        }
+                        treeGroup.position.set(posX, 0, posZ);
+                        scene.add(treeGroup);
+                        sceneryObjects.push(treeGroup);
+                    }
+                }
+            }
+        }
+
+        function buildTrack(levelIndex) {
+            trackObjects.forEach(obj => scene.remove(obj));
+            trackObjects = [];
+
+            const level = LEVELS[levelIndex];
+            const theme = level.theme;
+
+            // Apply Atmosphere & Ground color per level theme
+            if (theme === 'CYBER') {
+                scene.background = new THREE.Color(0x0f0e17);
+                scene.fog = new THREE.FogExp2(0x1a103c, 0.012);
+                groundPlane.material.color.setHex(0x0f172a);
+                sunLight.color.setHex(0xc084fc);
+                hemiLight.color.setHex(0x38bdf8);
+            } else if (theme === 'DESERT') {
+                scene.background = new THREE.Color(0xffedd5);
+                scene.fog = new THREE.FogExp2(0xfed7aa, 0.009);
+                groundPlane.material.color.setHex(0xeab308);
+                sunLight.color.setHex(0xffedd5);
+                hemiLight.color.setHex(0xf59e0b);
+            } else if (theme === 'VOLCANO') {
+                scene.background = new THREE.Color(0x180808);
+                scene.fog = new THREE.FogExp2(0x3b0707, 0.015);
+                groundPlane.material.color.setHex(0x09090b);
+                sunLight.color.setHex(0xf87171);
+                hemiLight.color.setHex(0xef4444);
+            } else {
+                scene.background = new THREE.Color(0x7dd3fc);
+                scene.fog = new THREE.FogExp2(0xbae6fd, 0.007);
+                groundPlane.material.color.setHex(0x22c55e);
+                sunLight.color.setHex(0xfffaed);
+                hemiLight.color.setHex(0xbae6fd);
+            }
+
+            level.grid.forEach(cell => {
+                const posX = cell.x * GRID_SIZE;
+                const posZ = cell.z * GRID_SIZE;
+
+                const tileGeo = new THREE.BoxGeometry(GRID_SIZE - 0.1, 0.25, GRID_SIZE - 0.1);
+                let tileMat;
+
+                if (cell.type === 'START') {
+                    tileMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+                } else if (cell.type === 'FINISH') {
+                    tileMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.4 });
+                } else {
+                    // Custom Road Materials based on Theme
+                    if (theme === 'CYBER') {
+                        tileMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.2, metalness: 0.8 });
+                    } else if (theme === 'DESERT') {
+                        tileMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.9 });
+                    } else if (theme === 'VOLCANO') {
+                        tileMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.5 });
+                    } else {
+                        tileMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+                    }
+                }
+
+                const tile = new THREE.Mesh(tileGeo, tileMat);
+                tile.position.set(posX, 0.125, posZ);
+                tile.receiveShadow = true;
+                tile.castShadow = true;
+                scene.add(tile);
+                trackObjects.push(tile);
+
+                // Add Glowing Road Borders for Cyberpunk & Lava Themes
+                if (theme === 'CYBER' && cell.type === 'ROAD') {
+                    const borderMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+                    const b1 = new THREE.Mesh(new THREE.BoxGeometry(GRID_SIZE - 0.1, 0.3, 0.15), borderMat);
+                    b1.position.set(posX, 0.2, posZ + 1.9);
+                    const b2 = b1.clone();
+                    b2.position.set(posX, 0.2, posZ - 1.9);
+                    scene.add(b1, b2);
+                    trackObjects.push(b1, b2);
+                } else if (theme === 'VOLCANO' && cell.type === 'ROAD') {
+                    const lavaBorderMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                    const b1 = new THREE.Mesh(new THREE.BoxGeometry(GRID_SIZE - 0.1, 0.3, 0.15), lavaBorderMat);
+                    b1.position.set(posX, 0.2, posZ + 1.9);
+                    const b2 = b1.clone();
+                    b2.position.set(posX, 0.2, posZ - 1.9);
+                    scene.add(b1, b2);
+                    trackObjects.push(b1, b2);
+                }
+
+                if (cell.item === 'OBSTACLE') {
+                    const obs = new THREE.Mesh(
+                        new THREE.ConeGeometry(1.2, 2, 8),
+                        new THREE.MeshStandardMaterial({ color: theme === 'VOLCANO' ? 0xd97706 : 0xef4444, roughness: 0.3 })
+                    );
+                    obs.position.set(posX, 1.1, posZ);
+                    obs.castShadow = true;
+                    scene.add(obs);
+                    trackObjects.push(obs);
+                    cell.mesh = obs;
+                } else if (cell.item === 'COIN') {
+                    const coin = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16),
+                        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 })
+                    );
+                    coin.rotation.x = Math.PI / 2;
+                    coin.position.set(posX, 1.2, posZ);
+                    coin.castShadow = true;
+                    coin.userData = { isCoin: true, baseY: 1.2, floatPhase: Math.random() * Math.PI * 2 };
+                    scene.add(coin);
+                    trackObjects.push(coin);
+                    cell.mesh = coin;
+                }
+
+                if (cell.type === 'FINISH') {
+                    const archGroup = new THREE.Group();
+                    const pMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3 });
+                    const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4), pMat);
+                    p1.position.set(-1.8, 2, 0);
+                    const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4), pMat);
+                    p2.position.set(1.8, 2, 0);
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.5, 0.4), pMat);
+                    top.position.set(0, 4, 0);
+                    archGroup.add(p1, p2, top);
+                    archGroup.position.set(posX, 0, posZ);
+                    scene.add(archGroup);
+                    trackObjects.push(archGroup);
+                }
+            });
+
+            buildThemeScenery(level);
+            resetCarToStart();
+        }
+
+        function resetCarToStart() {
+            const level = LEVELS[currentLevel];
+            const startCell = level.grid.find(g => g.type === 'START');
+            carGridPos = { x: startCell.x, z: startCell.z, dir: 0 };
+            carMesh.position.set(startCell.x * GRID_SIZE, 0.2, startCell.z * GRID_SIZE);
+            carMesh.rotation.set(0, 0, 0);
+
+            updateCameraTarget();
+            camera.position.copy(targetCamPos);
+            currentCamLookAt.copy(targetCamLookAt);
+            camera.lookAt(currentCamLookAt);
+        }
+
+        function updateCameraTarget() {
+            const angle = carMesh.rotation.y;
+            const camDist = 12;
+            const camHeight = 9;
+            const lookDist = 4;
+
+            targetCamPos.set(
+                carMesh.position.x - Math.sin(angle) * camDist,
+                carMesh.position.y + camHeight,
+                carMesh.position.z - Math.cos(angle) * camDist
+            );
+
+            targetCamLookAt.set(
+                carMesh.position.x + Math.sin(angle) * lookDist,
+                carMesh.position.y + 1,
+                carMesh.position.z + Math.cos(angle) * lookDist
+            );
+        }
+
+        function renderLevelCards() {
+            const container = document.getElementById('level-grid');
+            container.innerHTML = '';
+
+            LEVELS.forEach((lvl, idx) => {
+                const card = document.createElement('div');
+                card.className = `glass-card p-4 rounded-2xl border ${idx <= currentLevel ? 'border-cyan-500/50 hover:border-cyan-400 cursor-pointer' : 'border-slate-800 opacity-60 pointer-events-none'} transition`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-orbitron font-bold text-cyan-400 uppercase">MISSION ${lvl.id}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${idx <= currentLevel ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-500'}">
+                            ${idx < currentLevel ? '<i class="fa-solid fa-circle-check text-emerald-400"></i> ผ่านแล้ว' : (idx === currentLevel ? 'ปลดล็อก' : 'ล็อค')}
+                        </span>
+                    </div>
+                    <h3 class="font-bold text-sm text-white mb-1">${lvl.title}</h3>
+                    <p class="text-xs text-slate-400 line-clamp-2">${lvl.desc}</p>
+                `;
+                card.onclick = () => selectLevel(idx);
+                container.appendChild(card);
+            });
+        }
+
+        function selectLevel(index) {
+            currentLevel = index;
+            const lvl = LEVELS[currentLevel];
+
+            document.getElementById('brief-level-num').textContent = `LEVEL ${lvl.id}`;
+            document.getElementById('brief-level-name').textContent = lvl.title;
+            document.getElementById('brief-level-desc').textContent = lvl.desc;
+            document.getElementById('brief-ct-skill').textContent = lvl.ctSkill;
+
+            document.getElementById('screen-level-select').classList.add('hidden');
+            document.getElementById('modal-briefing').classList.remove('hidden');
+
+            buildTrack(currentLevel);
+        }
+
+        function startMissionGameplay() {
+            document.getElementById('modal-briefing').classList.add('hidden');
+            document.getElementById('hud-top').classList.remove('hidden');
+            document.getElementById('gameplay-area').classList.remove('hidden');
+
+            document.getElementById('hud-level-title').textContent = LEVELS[currentLevel].title;
+
+            setupPalette();
+            userAlgorithm = [...LEVELS[currentLevel].initialCode];
+            renderAlgorithmPipeline();
+        }
+
+        function setupPalette() {
+            const container = document.getElementById('palette-container');
+            container.innerHTML = '';
+
+            const level = LEVELS[currentLevel];
+            level.allowedBlocks.forEach(cmdKey => {
+                const cmd = COMMAND_TYPES[cmdKey];
+                const btn = document.createElement('button');
+                btn.className = `${cmd.color} px-2.5 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow transition active:scale-95`;
+                btn.innerHTML = `<i class="fa-solid ${cmd.icon}"></i> ${cmd.label}`;
+                btn.onclick = () => addCommandToAlgorithm(cmdKey);
+                container.appendChild(btn);
+            });
+        }
+
+        function addCommandToAlgorithm(cmdKey) {
+            if (isExecuting) return;
+            const max = LEVELS[currentLevel].maxBlocks;
+            if (userAlgorithm.length >= max) {
+                alert(`ด่านนี้จำกัดบล็อกคำสั่งไม่เกิน ${max} บล็อก!`);
+                return;
+            }
+            userAlgorithm.push(cmdKey);
+            playSound('step');
+            renderAlgorithmPipeline();
+        }
+
+        function removeCommand(index) {
+            if (isExecuting) return;
+            userAlgorithm.splice(index, 1);
+            playSound('step');
+            renderAlgorithmPipeline();
+        }
+
+        function renderAlgorithmPipeline() {
+            const dropzone = document.getElementById('algorithm-dropzone');
+            const countText = document.getElementById('command-count');
+
+            if (countText) {
+                countText.textContent = `${userAlgorithm.length} / ${LEVELS[currentLevel].maxBlocks} บล็อก`;
+            }
+
+            if (!dropzone) return;
+
+            if (userAlgorithm.length === 0) {
+                dropzone.innerHTML = `
+                    <div id="empty-state-msg" class="my-auto text-center text-slate-500 text-xs p-4">
+                        <i class="fa-solid fa-cubes text-2xl mb-1 block opacity-40"></i>
+                        เลือกบล็อกคำสั่งด้านบนเพื่อสร้างขั้นตอนวิธีสำหรับควบคุมรถ
+                    </div>
+                `;
+                return;
+            }
+
+            dropzone.innerHTML = '';
+
+            userAlgorithm.forEach((cmdKey, idx) => {
+                const cmd = COMMAND_TYPES[cmdKey];
+                if (!cmd) return;
+                const block = document.createElement('div');
+                block.id = `alg-block-${idx}`;
+                block.className = `glass-card p-2 rounded-xl flex justify-between items-center border border-slate-700/80 text-xs font-semibold text-slate-200 transition`;
+                block.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-[10px] text-slate-500 w-4">${idx + 1}.</span>
+                        <i class="fa-solid ${cmd.icon} text-cyan-400"></i>
+                        <span>${cmd.label}</span>
+                    </div>
+                    <button onclick="removeCommand(${idx})" class="text-slate-500 hover:text-rose-400 px-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                dropzone.appendChild(block);
+            });
+        }
+
+        function expandAlgorithm(rawCommands) {
+            let expanded = [];
+            for (let cmd of rawCommands) {
+                if (cmd === 'REPEAT_2') {
+                    expanded.push('FORWARD', 'FORWARD');
+                } else if (cmd === 'REPEAT_3') {
+                    expanded.push('FORWARD', 'FORWARD', 'FORWARD');
+                } else {
+                    expanded.push(cmd);
+                }
+            }
+            return expanded;
+        }
+
+        function triggerExplosionEffect(position) {
+            const particleCount = 25;
+            const pGroup = new THREE.Group();
+            pGroup.position.copy(position);
+
+            const pGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const pMatFire = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const pMatSmoke = new THREE.MeshBasicMaterial({ color: 0x334155 });
+
+            const particles = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                const isFire = Math.random() > 0.4;
+                const p = new THREE.Mesh(pGeo, isFire ? pMatFire : pMatSmoke);
+                p.position.set(0, 0.5, 0);
+                p.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 8,
+                        3 + Math.random() * 6,
+                        (Math.random() - 0.5) * 8
+                    ),
+                    life: 1.0
+                };
+                pGroup.add(p);
+                particles.push(p);
+            }
+
+            scene.add(pGroup);
+            particleSystems.push({ group: pGroup, particles: particles });
+        }
+
+        async function runRaceAlgorithm() {
+            if (isExecuting || userAlgorithm.length === 0) return;
+            isExecuting = true;
+
+            document.getElementById('btn-start-race').disabled = true;
+            document.getElementById('btn-start-race').classList.add('opacity-50');
+
+            resetCarToStart();
+            await new Promise(r => setTimeout(r, 400));
+
+            const expandedOps = expandAlgorithm(userAlgorithm);
+            const level = LEVELS[currentLevel];
+
+            for (let i = 0; i < expandedOps.length; i++) {
+                const op = expandedOps[i];
+
+                const blockEl = document.getElementById(`alg-block-${i}`);
+                if (blockEl) blockEl.classList.add('block-executing');
+
+                const stepSuccess = await executeSingleStep(op, level);
+
+                if (blockEl) blockEl.classList.remove('block-executing');
+
+                if (!stepSuccess) {
+                    playSound('crash');
+                    triggerExplosionEffect(carMesh.position);
+
+                    lives--;
+                    document.getElementById('hud-lives').textContent = lives;
+
+                    if (lives <= 0) {
+                        alert("💥 รถระเบิด! คุณเสียชีวิตครบ 3 ครั้ง กำลังรีเซ็ตด่านใหม่...");
+                        lives = 3;
+                        document.getElementById('hud-lives').textContent = lives;
+                    } else {
+                        alert("💥 รถชนสิ่งกีดขวางหรือตกถนน! ลองแก้ไข Algorithm ใหม่ดูนะ");
+                    }
+
+                    resetCarToStart();
+                    break;
+                }
+
+                const currentTile = level.grid.find(g => g.x === carGridPos.x && g.z === carGridPos.z);
+                if (currentTile && currentTile.type === 'FINISH') {
+                    playSound('win');
+                    await new Promise(r => setTimeout(r, 300));
+                    handleLevelSuccess();
+                    break;
+                }
+
+                await new Promise(r => setTimeout(r, 350));
+            }
+
+            isExecuting = false;
+            document.getElementById('btn-start-race').disabled = false;
+            document.getElementById('btn-start-race').classList.remove('opacity-50');
+        }
+
+        async function executeSingleStep(op, level) {
+            playSound('step');
+
+            let nextX = carGridPos.x;
+            let nextZ = carGridPos.z;
+            let nextDir = carGridPos.dir;
+
+            let startRotY = carMesh.rotation.y;
+            let targetRotY = startRotY;
+            let targetRoll = 0;
+            let targetPitch = 0;
+
+            if (op === 'FORWARD') {
+                if (nextDir === 0) nextZ += 1;
+                else if (nextDir === 1) nextX += 1;
+                else if (nextDir === 2) nextZ -= 1;
+                else if (nextDir === 3) nextX -= 1;
+                targetPitch = -0.08;
+            } else if (op === 'ACCELERATE') {
+                if (nextDir === 0) nextZ += 2;
+                else if (nextDir === 1) nextX += 2;
+                else if (nextDir === 2) nextZ -= 2;
+                else if (nextDir === 3) nextX -= 2;
+                targetPitch = -0.15;
+            } else if (op === 'LEFT') {
+                nextDir = (nextDir + 3) % 4; // Turn Left
+                targetRotY = startRotY - Math.PI / 2;
+                targetRoll = 0.12;
+            } else if (op === 'RIGHT') {
+                nextDir = (nextDir + 1) % 4; // Turn Right
+                targetRotY = startRotY + Math.PI / 2;
+                targetRoll = -0.12;
+            } else if (op === 'IF_OBSTACLE') {
+                let frontX = nextX, frontZ = nextZ;
+                if (nextDir === 0) frontZ += 1;
+                else if (nextDir === 1) frontX += 1;
+                else if (nextDir === 2) frontZ -= 1;
+                else if (nextDir === 3) frontX -= 1;
+
+                const aheadTile = level.grid.find(g => g.x === frontX && g.z === frontZ);
+                if (aheadTile && aheadTile.item === 'OBSTACLE') {
+                    nextDir = (nextDir + 3) % 4; // Turn left if obstacle
+                    targetRotY = startRotY - Math.PI / 2;
+                    targetRoll = 0.12;
+                } else {
+                    nextZ = frontZ; nextX = frontX;
+                    targetPitch = -0.08;
+                }
+            }
+
+            const targetTile = level.grid.find(g => g.x === nextX && g.z === nextZ);
+            if (!targetTile) return false;
+            if (targetTile.item === 'OBSTACLE') return false;
+
+            if (targetTile.item === 'COIN') {
+                playSound('coin');
+                currentCoins += 10;
+                totalScore += 10;
+                document.getElementById('hud-coins').textContent = currentCoins;
+                document.getElementById('hud-score').textContent = totalScore;
+                if (targetTile.mesh) scene.remove(targetTile.mesh);
+                targetTile.item = null;
+            }
+
+            const startPos = { ...carMesh.position };
+            const targetPos = { x: nextX * GRID_SIZE, y: 0.2, z: nextZ * GRID_SIZE };
+
+            const duration = 400;
+            const startTime = performance.now();
+
+            await new Promise(resolve => {
+                function animateStep(now) {
+                    const elapsed = now - startTime;
+                    const linearT = Math.min(1.0, elapsed / duration);
+                    const t = linearT < 0.5 ? 4 * linearT * linearT * linearT : 1 - Math.pow(-2 * linearT + 2, 3) / 2;
+
+                    carMesh.position.x = startPos.x + (targetPos.x - startPos.x) * t;
+                    carMesh.position.z = startPos.z + (targetPos.z - startPos.z) * t;
+                    carMesh.rotation.y = startRotY + (targetRotY - startRotY) * t;
+
+                    carMesh.rotation.z = Math.sin(linearT * Math.PI) * targetRoll;
+                    carMesh.rotation.x = Math.sin(linearT * Math.PI) * targetPitch;
+
+                    wheels.forEach((w, idx) => {
+                        w.rotation.x += 0.25;
+                        if (idx < 2 && (op === 'LEFT' || op === 'RIGHT')) {
+                            w.rotation.y = (op === 'LEFT' ? 0.3 : -0.3);
+                        }
+                    });
+
+                    updateCameraTarget();
+
+                    if (linearT < 1.0) {
+                        requestAnimationFrame(animateStep);
+                    } else {
+                        carMesh.rotation.z = 0;
+                        carMesh.rotation.x = 0;
+                        wheels.forEach(w => w.rotation.y = 0);
+                        resolve();
+                    }
+                }
+                requestAnimationFrame(animateStep);
+            });
+
+            carGridPos = { x: nextX, z: nextZ, dir: nextDir };
+            return true;
+        }
+
+        function handleLevelSuccess() {
+            const level = LEVELS[currentLevel];
+
+            const commandBonus = Math.max(0, (level.maxBlocks - userAlgorithm.length) * 15);
+            const levelScore = 100 + commandBonus;
+            totalScore += levelScore;
+
+            document.getElementById('hud-score').textContent = totalScore;
+
+            document.getElementById('sum-score').textContent = `+100`;
+            document.getElementById('sum-coins').textContent = `+${currentCoins}`;
+            document.getElementById('sum-bonus').textContent = `+${commandBonus}`;
+            document.getElementById('summary-ct-explain').textContent = level.ctExplain;
+
+            document.getElementById('modal-summary').classList.remove('hidden');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            sceneryObjects.forEach(obj => {
+                if (obj.userData && obj.userData.isTree) {
+                    const phase = obj.userData.windPhase + elapsedTime * obj.userData.swaySpeed;
+                    obj.rotation.z = Math.sin(phase) * obj.userData.swayAmount;
+                }
+            });
+
+            trackObjects.forEach(obj => {
+                if (obj.userData && obj.userData.isCoin) {
+                    obj.rotation.z += 0.04;
+                    obj.position.y = obj.userData.baseY + Math.sin(elapsedTime * 3 + obj.userData.floatPhase) * 0.15;
+                }
+            });
+
+            cloudObjects.forEach(cloud => {
+                cloud.position.x += cloud.userData.driftSpeed;
+                if (cloud.position.x > 100) cloud.position.x = -100;
+            });
+
+            for (let i = particleSystems.length - 1; i >= 0; i--) {
+                const sys = particleSystems[i];
+                let allDead = true;
+                sys.particles.forEach(p => {
+                    if (p.userData.life > 0) {
+                        p.position.addScaledVector(p.userData.velocity, 0.016);
+                        p.userData.velocity.y -= 0.18;
+                        p.userData.life -= 0.03;
+                        p.scale.multiplyScalar(0.95);
+                        allDead = false;
+                    }
+                });
+                if (allDead) {
+                    scene.remove(sys.group);
+                    particleSystems.splice(i, 1);
+                }
+            }
+
+            if (carMesh && !isExecuting) {
+                carMesh.position.y = 0.2 + Math.sin(elapsedTime * 8) * 0.012;
+            }
+
+            camera.position.lerp(targetCamPos, 0.08);
+            currentCamLookAt.lerp(targetCamLookAt, 0.1);
+            camera.lookAt(currentCamLookAt);
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function() {
+            init3D();
+            animate();
+
+            document.getElementById('btn-enter-levels').onclick = () => {
+                document.getElementById('screen-main').classList.add('hidden');
+                document.getElementById('screen-level-select').classList.remove('hidden');
+                renderLevelCards();
+            };
+
+            document.getElementById('btn-back-main').onclick = () => {
+                document.getElementById('screen-level-select').classList.add('hidden');
+                document.getElementById('screen-main').classList.remove('hidden');
+            };
+
+            document.getElementById('btn-back-levels').onclick = () => {
+                document.getElementById('hud-top').classList.add('hidden');
+                document.getElementById('gameplay-area').classList.add('hidden');
+                document.getElementById('screen-level-select').classList.remove('hidden');
+                renderLevelCards();
+            };
+
+            document.getElementById('btn-start-mission').onclick = startMissionGameplay;
+            document.getElementById('btn-start-race').onclick = runRaceAlgorithm;
+            document.getElementById('btn-reset-code').onclick = resetCarToStart;
+            document.getElementById('btn-clear-code').onclick = () => {
+                userAlgorithm = [];
+                renderAlgorithmPipeline();
+            };
+
+            document.getElementById('btn-retry-level').onclick = () => {
+                document.getElementById('modal-summary').classList.add('hidden');
+                buildTrack(currentLevel);
+                userAlgorithm = [];
+                renderAlgorithmPipeline();
+            };
+
+            document.getElementById('btn-next-level').onclick = () => {
+                document.getElementById('modal-summary').classList.add('hidden');
+                if (currentLevel < LEVELS.length - 1) {
+                    currentLevel++;
+                    selectLevel(currentLevel);
+                } else {
+                    alert("🎉 ยินดีด้วย! คุณผ่านภารกิจวิทยาการคำนวณครบทั้ง 5 ด่านแล้ว!");
+                    document.getElementById('hud-top').classList.add('hidden');
+                    document.getElementById('gameplay-area').classList.add('hidden');
+                    document.getElementById('screen-main').classList.remove('hidden');
+                }
+            };
+        };
+    </script>
+</body>
+</html>
